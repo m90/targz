@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/walle/targz"
+	"github.com/m90/targz"
 )
 
 func Example() {

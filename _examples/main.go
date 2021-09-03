@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/walle/targz"
+	"github.com/m90/targz"
 )
 
 func main() {
