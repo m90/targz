@@ -2,13 +2,13 @@
 
 Library for packaging/extracting folders in tar.gz archives.
 
-[Documentation on godoc.org](http://godoc.org/github.com/walle/targz)
+[Documentation on godoc.org](http://godoc.org/github.com/m90/targz)
 
 ## Installation
 
 Installing using go get is the easiest.
 
-    go get github.com/walle/targz
+    go get github.com/m90/targz
 
 ## Usage
 
@@ -19,13 +19,13 @@ The API is really simple, there are only two methods.
 
 ### Create an archive containing a folder
 
-    import "github.com/walle/targz"
+    import "github.com/m90/targz"
     ...
     err := targz.Compress("my_folder", "my_file.tar.gz")
 
 ### Extract an archive
 
-    import "github.com/walle/targz"
+    import "github.com/m90/targz"
     ...
     err := targz.Extract("my_file.tar.gz", "path/to/extract/to")
 
