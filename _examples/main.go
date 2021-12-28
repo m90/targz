@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 
 	"github.com/m90/targz"
@@ -30,10 +29,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Open so we can se the files and remove the directory if we'd like.
-	cmd := exec.Command("open", tmpDir)
-	cmd.Run()
-
+	fmt.Println(tmpDir)
 	os.Exit(0)
 }
 
@@ -53,6 +49,9 @@ func createExampleData() (string, string) {
 		panic(err)
 		os.Exit(1)
 	}
+
+	emptyDir := filepath.Join(directory, "empty")
+	err = os.MkdirAll(emptyDir, 0755)
 
 	if err := os.WriteFile(filepath.Join(subDirectory, "my_file.txt"), []byte("example data\n"), 0666); err != nil {
 		fmt.Println("create file error")

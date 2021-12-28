@@ -187,6 +187,17 @@ func writeDirectory(directory string, tarWriter *tar.Writer, subPath string) err
 		return err
 	}
 
+	if len(files) == 0 {
+		dirInfo, err := os.Stat(directory)
+		if err != nil {
+			return err
+		}
+		err = writeTarGz(directory, tarWriter, dirInfo, subPath)
+		if err != nil {
+			return err
+		}
+	}
+
 	for _, file := range files {
 		currentPath := filepath.Join(directory, file.Name())
 		if file.IsDir() {
@@ -270,12 +281,21 @@ func extract(filePath string, directory string) error {
 		}
 
 		fileInfo := header.FileInfo()
-		dir := filepath.Join(directory, filepath.Dir(header.Name))
+
+		name := header.Name
+		if !fileInfo.IsDir() {
+			name = filepath.Dir(header.Name)
+		}
+		dir := filepath.Join(directory, name)
 		filename := filepath.Join(dir, fileInfo.Name())
 
 		err = os.MkdirAll(dir, 0755)
 		if err != nil {
 			return err
+		}
+
+		if fileInfo.IsDir() {
+			continue
 		}
 
 		file, err := os.Create(filename)

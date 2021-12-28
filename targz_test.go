@@ -112,6 +112,7 @@ func Test_CompressAndExtractWithMultipleFiles(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	createFiles(dirToCompress, "file1.txt", "file2.txt", "file3.txt")
+	os.Mkdir(fmt.Sprintf("%s/empty_dir/", dirToCompress), 0755)
 
 	structureBefore := directoryStructureString(dirToCompress)
 
