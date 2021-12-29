@@ -21,14 +21,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Extract my_archive.tar.gz to a new folder called extracted
-	err = targz.Extract(filepath.Join(tmpDir, "my_archive.tar.gz"), filepath.Join(tmpDir, "extracted"))
-	if err != nil {
-		fmt.Println("Extract error")
-		panic(err)
-		os.Exit(1)
-	}
-
 	fmt.Println(tmpDir)
 	os.Exit(0)
 }
