@@ -2,14 +2,11 @@
 //
 // Usage (discarding potential errors):
 //   	targz.Compress("path/to/the/directory/to/compress", "my_archive.tar.gz")
-//   	targz.Extract("my_archive.tar.gz", "directory/to/extract/to")
 // This creates an archive in ./my_archive.tar.gz with the folder "compress" (last in the path).
-// And extracts the folder "compress" to "directory/to/extract/to/". The folder structure is created if it doesn't exist.
 package targz
 
 import (
 	"archive/tar"
-	"bufio"
 	"compress/gzip"
 	"errors"
 	"io"
@@ -46,28 +43,6 @@ func Compress(inputFilePath, outputFilePath string) (err error) {
 	}
 
 	return nil
-}
-
-// Extract extracts a archive from the file inputFilePath points to in the directory outputFilePath points to.
-// It tries to create the directory structure outputFilePath contains if it doesn't exist.
-// It returns potential errors to be checked or nil if everything works.
-func Extract(inputFilePath, outputFilePath string) (err error) {
-	outputFilePath = stripTrailingSlashes(outputFilePath)
-	inputFilePath, outputFilePath, err = makeAbsolute(inputFilePath, outputFilePath)
-	if err != nil {
-		return err
-	}
-	undoDir, err := mkdirAll(outputFilePath, 0755)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err != nil {
-			undoDir()
-		}
-	}()
-
-	return extract(inputFilePath, outputFilePath)
 }
 
 // Creates all directories with os.MakedirAll and returns a function to remove the first created directory so cleanup is possible.
@@ -187,6 +162,17 @@ func writeDirectory(directory string, tarWriter *tar.Writer, subPath string) err
 		return err
 	}
 
+	if len(files) == 0 {
+		dirInfo, err := os.Stat(directory)
+		if err != nil {
+			return err
+		}
+		err = writeTarGz(directory, tarWriter, dirInfo, subPath)
+		if err != nil {
+			return err
+		}
+	}
+
 	for _, file := range files {
 		currentPath := filepath.Join(directory, file.Name())
 		if file.IsDir() {
@@ -242,75 +228,4 @@ func writeTarGz(path string, tarWriter *tar.Writer, fileInfo os.FileInfo, subPat
 	}
 
 	return err
-}
-
-// Extract the file in filePath to directory.
-func extract(filePath string, directory string) error {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	gzipReader, err := gzip.NewReader(bufio.NewReader(file))
-	if err != nil {
-		return err
-	}
-	defer gzipReader.Close()
-
-	tarReader := tar.NewReader(gzipReader)
-
-	for {
-		header, err := tarReader.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-
-		fileInfo := header.FileInfo()
-		dir := filepath.Join(directory, filepath.Dir(header.Name))
-		filename := filepath.Join(dir, fileInfo.Name())
-
-		err = os.MkdirAll(dir, 0755)
-		if err != nil {
-			return err
-		}
-
-		file, err := os.Create(filename)
-		if err != nil {
-			return err
-		}
-
-		writer := bufio.NewWriter(file)
-
-		buffer := make([]byte, 4096)
-		for {
-			n, err := tarReader.Read(buffer)
-			if err != nil && err != io.EOF {
-				panic(err)
-			}
-			if n == 0 {
-				break
-			}
-
-			_, err = writer.Write(buffer[:n])
-			if err != nil {
-				return err
-			}
-		}
-
-		err = writer.Flush()
-		if err != nil {
-			return err
-		}
-
-		err = file.Close()
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }

@@ -33,8 +33,9 @@ func Test_CompressAndExtract(t *testing.T) {
 		t.Errorf("Compress error: %s", err)
 	}
 
-	err = Extract(filepath.Join(tmpDir, "my_archive.tar.gz"), filepath.Join(tmpDir, "extracted"))
-	if err != nil {
+	os.MkdirAll(filepath.Join(tmpDir, "extracted"), 0755)
+	cmd := exec.Command("tar", "xfz", filepath.Join(tmpDir, "my_archive.tar.gz"), "-C", filepath.Join(tmpDir, "extracted"))
+	if err := cmd.Run(); err != nil {
 		t.Errorf("Extract error: %s", err)
 	}
 
@@ -56,8 +57,9 @@ func Test_CompressAndExtractWithTrailingSlash(t *testing.T) {
 		t.Errorf("Compress error: %s", err)
 	}
 
-	err = Extract(filepath.Join(tmpDir, "my_archive.tar.gz"), filepath.Join(tmpDir, "extracted/"))
-	if err != nil {
+	os.MkdirAll(filepath.Join(tmpDir, "extracted"), 0755)
+	cmd := exec.Command("tar", "xfz", filepath.Join(tmpDir, "my_archive.tar.gz"), "-C", filepath.Join(tmpDir, "extracted/"))
+	if err := cmd.Run(); err != nil {
 		t.Errorf("Extract error: %s", err)
 	}
 
@@ -65,21 +67,6 @@ func Test_CompressAndExtractWithTrailingSlash(t *testing.T) {
 
 	if structureAfter != structureBefore {
 		t.Errorf("Directory structure before compress and after extract does not match. Before {%s}, After {%s}", structureBefore, structureAfter)
-	}
-}
-
-func Test_GivesErrorIfOutputIsFile(t *testing.T) {
-	tmpDir, dirToCompress := createTestData()
-	defer os.RemoveAll(tmpDir)
-
-	err := Compress(dirToCompress, filepath.Join(tmpDir, "my_archive.tar.gz"))
-	if err != nil {
-		t.Errorf("Compress error: %s", err)
-	}
-
-	err = Extract(filepath.Join(tmpDir, "my_archive.tar.gz"), filepath.Join(tmpDir, "my_archive.tar.gz"))
-	if err == nil {
-		t.Errorf("Should say that my_archive.tar.gz isn't a directory")
 	}
 }
 
@@ -112,6 +99,7 @@ func Test_CompressAndExtractWithMultipleFiles(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	createFiles(dirToCompress, "file1.txt", "file2.txt", "file3.txt")
+	os.Mkdir(fmt.Sprintf("%s/empty_dir/", dirToCompress), 0755)
 
 	structureBefore := directoryStructureString(dirToCompress)
 
@@ -120,8 +108,9 @@ func Test_CompressAndExtractWithMultipleFiles(t *testing.T) {
 		t.Errorf("Compress error: %s", err)
 	}
 
-	err = Extract(filepath.Join(tmpDir, "my_archive.tar.gz"), filepath.Join(tmpDir, "extracted"))
-	if err != nil {
+	os.MkdirAll(filepath.Join(tmpDir, "extracted"), 0755)
+	cmd := exec.Command("tar", "xfz", filepath.Join(tmpDir, "my_archive.tar.gz"), "-C", filepath.Join(tmpDir, "extracted"))
+	if err := cmd.Run(); err != nil {
 		t.Errorf("Extract error: %s", err)
 	}
 
@@ -158,52 +147,28 @@ func Test_ThatOutputDirIsRemovedIfCompressFails(t *testing.T) {
 	}
 }
 
-func Test_ThatOutputDirIsRemovedIfExtractFails(t *testing.T) {
-	tmpDir, _ := createTestData()
+func Test_CompabilityWithTar(t *testing.T) {
+	tmpDir, dirToCompress := createTestData()
 	defer os.RemoveAll(tmpDir)
 
-	err := Extract(filepath.Join(tmpDir, "my_archive.tar.gz"), filepath.Join(tmpDir, "extracted"))
-	if err == nil {
-		t.Errorf("Should say that %s doesn't exist", filepath.Join(tmpDir, "my_archive.tar.gz"))
+	structureBefore := directoryStructureString(dirToCompress)
+
+	err := Compress(dirToCompress, filepath.Join(tmpDir, "my_archive.tar.gz"))
+	if err != nil {
+		t.Errorf("Compress error: %s", err)
 	}
 
-	exist, err := exists(filepath.Join(tmpDir, "extracted"))
-	if err != nil {
+	os.MkdirAll(filepath.Join(tmpDir, "extracted"), 0755)
+	cmd := exec.Command("tar", "xfz", filepath.Join(tmpDir, "my_archive.tar.gz"), "-C", filepath.Join(tmpDir, "extracted"))
+	if err := cmd.Run(); err != nil {
+		fmt.Println("Run error")
 		panic(err)
 	}
-	if exist {
-		t.Errorf("%s should be removed", filepath.Join(tmpDir, "extracted"))
-	}
-}
 
-func Test_CompabilityWithTar(t *testing.T) {
-	_, err := exec.LookPath("tar")
-	if err == nil {
-		tmpDir, dirToCompress := createTestData()
-		defer os.RemoveAll(tmpDir)
+	structureAfter := directoryStructureString(filepath.Join(tmpDir, "extracted", "my_folder"))
 
-		structureBefore := directoryStructureString(dirToCompress)
-
-		err := Compress(dirToCompress, filepath.Join(tmpDir, "my_archive.tar.gz"))
-		if err != nil {
-			t.Errorf("Compress error: %s", err)
-		}
-
-		os.MkdirAll(filepath.Join(tmpDir, "extracted"), 0755)
-		cmd := exec.Command("tar", "xfz", filepath.Join(tmpDir, "my_archive.tar.gz"), "-C", filepath.Join(tmpDir, "extracted"))
-		err = cmd.Run()
-		if err != nil {
-			fmt.Println("Run error")
-			panic(err)
-		}
-
-		structureAfter := directoryStructureString(filepath.Join(tmpDir, "extracted", "my_folder"))
-
-		if structureAfter != structureBefore {
-			t.Errorf("Directory structure before compress and after extract does not match. Before {%s}, After {%s}", structureBefore, structureAfter)
-		}
-	} else {
-		t.Skip("Skipping test because tar command was not found.")
+	if structureAfter != structureBefore {
+		t.Errorf("Directory structure before compress and after extract does not match. Before {%s}, After {%s}", structureBefore, structureAfter)
 	}
 }
 
