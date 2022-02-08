@@ -201,6 +201,10 @@ func writeTarGz(path string, tarWriter *tar.Writer, fileInfo os.FileInfo, subPat
 		}
 	}
 
+	if fileInfo.Mode()&os.ModeSocket == os.ModeSocket {
+		return nil
+	}
+
 	header, err := tar.FileInfoHeader(fileInfo, link)
 	if err != nil {
 		return err
