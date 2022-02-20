@@ -10,6 +10,7 @@ import (
 	"compress/gzip"
 	"errors"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"path"
@@ -132,7 +133,7 @@ func compress(inPath, outFilePath, subPath string) (err error) {
 	gzipWriter := gzip.NewWriter(file)
 	tarWriter := tar.NewWriter(gzipWriter)
 
-	err = writeDirectory(inPath, tarWriter, subPath)
+	err = writeDirectory(inPath, tarWriter)
 	if err != nil {
 		return err
 	}
@@ -156,51 +157,31 @@ func compress(inPath, outFilePath, subPath string) (err error) {
 }
 
 // Read a directory and write it to the tar writer. Recursive function that writes all sub folders.
-func writeDirectory(directory string, tarWriter *tar.Writer, subPath string) error {
-	files, err := ioutil.ReadDir(directory)
-	if err != nil {
+func writeDirectory(directory string, tarWriter *tar.Writer) error {
+	var files []string
+	if err := filepath.WalkDir(directory, func(path string, di fs.DirEntry, err error) error {
+		files = append(files, path)
+		return err
+	}); err != nil {
 		return err
 	}
-
-	if len(files) == 0 {
-		dirInfo, err := os.Stat(directory)
-		if err != nil {
-			return err
-		}
-		err = writeTarGz(directory, tarWriter, dirInfo, subPath)
-		if err != nil {
-			return err
-		}
-	}
-
 	for _, file := range files {
-		currentPath := filepath.Join(directory, file.Name())
-		if file.IsDir() {
-			err := writeDirectory(currentPath, tarWriter, subPath)
-			if err != nil {
-				return err
-			}
-		} else {
-			dirInfo, err := os.Stat(directory)
-			if err != nil {
-				return err
-			}
-			err = writeTarGz(filepath.Dir(currentPath), tarWriter, dirInfo, subPath)
-			if err != nil {
-				return err
-			}
-			err = writeTarGz(currentPath, tarWriter, file, subPath)
-			if err != nil {
-				return err
-			}
+		if err := writeTarGz(file, tarWriter); err != nil {
+			return err
 		}
 	}
-
 	return nil
 }
 
 // Write path without the prefix in subPath to tar writer.
-func writeTarGz(path string, tarWriter *tar.Writer, fileInfo os.FileInfo, subPath string) error {
+func writeTarGz(path string, tarWriter *tar.Writer) error {
+	fileInfo, err := os.Lstat(path)
+	if err != nil {
+		return err
+	}
+
+	subPath := filepath.Dir(path)
+
 	var link string
 	if fileInfo.Mode()&os.ModeSymlink == os.ModeSymlink {
 		var err error
