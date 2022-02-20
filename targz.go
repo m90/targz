@@ -8,10 +8,8 @@ package targz
 import (
 	"archive/tar"
 	"compress/gzip"
-	"errors"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -111,15 +109,6 @@ func makeAbsolute(inputFilePath, outputFilePath string) (string, string, error) 
 // The finished archive contains just the directory added, not any parents.
 // This is possible by giving the whole path except the final directory in subPath.
 func compress(inPath, outFilePath, subPath string) (err error) {
-	files, err := ioutil.ReadDir(inPath)
-	if err != nil {
-		return err
-	}
-
-	if len(files) == 0 {
-		return errors.New("targz: input directory is empty")
-	}
-
 	file, err := os.Create(outFilePath)
 	if err != nil {
 		return err
@@ -133,9 +122,17 @@ func compress(inPath, outFilePath, subPath string) (err error) {
 	gzipWriter := gzip.NewWriter(file)
 	tarWriter := tar.NewWriter(gzipWriter)
 
-	err = writeDirectory(inPath, tarWriter)
-	if err != nil {
+	var paths []string
+	if err := filepath.WalkDir(inPath, func(path string, di fs.DirEntry, err error) error {
+		paths = append(paths, path)
 		return err
+	}); err != nil {
+		return err
+	}
+	for _, p := range paths {
+		if err := writeTarGz(p, tarWriter); err != nil {
+			return err
+		}
 	}
 
 	err = tarWriter.Close()
@@ -153,23 +150,6 @@ func compress(inPath, outFilePath, subPath string) (err error) {
 		return err
 	}
 
-	return nil
-}
-
-// Read a directory and write it to the tar writer. Recursive function that writes all sub folders.
-func writeDirectory(directory string, tarWriter *tar.Writer) error {
-	var files []string
-	if err := filepath.WalkDir(directory, func(path string, di fs.DirEntry, err error) error {
-		files = append(files, path)
-		return err
-	}); err != nil {
-		return err
-	}
-	for _, file := range files {
-		if err := writeTarGz(file, tarWriter); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
