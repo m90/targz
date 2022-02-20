@@ -181,6 +181,14 @@ func writeDirectory(directory string, tarWriter *tar.Writer, subPath string) err
 				return err
 			}
 		} else {
+			dirInfo, err := os.Stat(directory)
+			if err != nil {
+				return err
+			}
+			err = writeTarGz(filepath.Dir(currentPath), tarWriter, dirInfo, subPath)
+			if err != nil {
+				return err
+			}
 			err = writeTarGz(currentPath, tarWriter, file, subPath)
 			if err != nil {
 				return err
