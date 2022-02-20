@@ -180,7 +180,9 @@ func writeTarGz(path string, tarWriter *tar.Writer) error {
 		return err
 	}
 
-	subPath := filepath.Dir(path)
+	if fileInfo.Mode()&os.ModeSocket == os.ModeSocket {
+		return nil
+	}
 
 	var link string
 	if fileInfo.Mode()&os.ModeSymlink == os.ModeSymlink {
@@ -190,15 +192,11 @@ func writeTarGz(path string, tarWriter *tar.Writer) error {
 		}
 	}
 
-	if fileInfo.Mode()&os.ModeSocket == os.ModeSocket {
-		return nil
-	}
-
 	header, err := tar.FileInfoHeader(fileInfo, link)
 	if err != nil {
 		return err
 	}
-	header.Name = path[len(subPath):]
+	header.Name = path
 
 	err = tarWriter.WriteHeader(header)
 	if err != nil {
