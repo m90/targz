@@ -1,3 +1,6 @@
+__This package exists for archival reasons only.
+It is not working correctly and not intended to be maintained in any way, please do not use it.__
+
 # Targz
 
 Library for packaging folders in tar.gz archives.
